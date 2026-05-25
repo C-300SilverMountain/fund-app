@@ -1,3 +1,37 @@
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+
+pluginManagement {
+    repositories {
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+    }
+}
+
+// 子模块 buildscript 里的 google() 会访问 dl.google.com，在添加时立即替换为阿里云
+def replaceForeignMaven = { repos ->
+    repos.whenObjectAdded { repo ->
+        if (repo instanceof MavenArtifactRepository) {
+            def url = repo.url.toString()
+            if (url.contains('dl.google.com')) {
+                repos.remove(repo)
+                repos.maven { it.url = uri('https://maven.aliyun.com/repository/google') }
+            } else if (url.contains('repo.maven.apache.org')) {
+                repos.remove(repo)
+                repos.maven { it.url = uri('https://maven.aliyun.com/repository/public') }
+            } else if (url.contains('plugins.gradle.org')) {
+                repos.remove(repo)
+                repos.maven { it.url = uri('https://maven.aliyun.com/repository/gradle-plugin') }
+            }
+        }
+    }
+}
+
+gradle.beforeProject { project ->
+    replaceForeignMaven(project.buildscript.repositories)
+    replaceForeignMaven(project.repositories)
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
